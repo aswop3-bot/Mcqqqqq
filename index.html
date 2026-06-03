@@ -11,22 +11,27 @@
             color: #333;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* تغيير لكي تبدأ الصفحة من الأعلى */
             min-height: 100vh;
             margin: 0;
             padding: 20px;
         }
         .quiz-container {
+            background-color: transparent;
+            width: 100%;
+            max-width: 800px; /* توسيع العرض قليلاً ليناسب القراءة المريحة */
+        }
+        .question-block {
             background-color: #fff;
             padding: 30px;
+            margin-bottom: 25px; /* مسافة بين كل سؤال وآخر */
             border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 600px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-right: 5px solid #3498db; /* لمسة جمالية بجانب السؤال */
         }
         h2 {
-            font-size: 22px;
-            line-height: 1.5;
+            font-size: 20px;
+            line-height: 1.6;
             margin-bottom: 20px;
             color: #2c3e50;
         }
@@ -44,69 +49,97 @@
             transition: all 0.3s ease;
             text-align: right;
         }
-        .option-btn:hover {
+        .option-btn:hover:not(:disabled) {
             background-color: #f9f9f9;
             border-color: #ccc;
         }
         .option-btn:disabled {
-            cursor: not-allowed;
+            cursor: default;
         }
-        /* التنسيق المطلوب للإجابات */
+        /* الألوان عند الإجابة */
         .correct {
-            background-color: #ffd54f !important; /* لون أصفر للإجابة الصحيحة */
+            background-color: #ffd54f !important; /* اللون الأصفر للإجابة الصحيحة */
             color: #000 !important;
             border-color: #ffd54f !important;
             font-weight: bold;
         }
         .incorrect {
-            background-color: #ef5350 !important; /* لون أحمر للإجابة الخاطئة */
+            background-color: #ef5350 !important; /* اللون الأحمر للإجابة الخاطئة */
             color: #fff !important;
             border-color: #ef5350 !important;
         }
-        #next-btn {
+        #submit-btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+        #submit-btn:hover {
+            background-color: #219150;
+        }
+        .score-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            display: none; /* مخفي حتى يضغط المستخدم على عرض النتيجة */
+            margin-bottom: 40px;
+        }
+        .score-container h3 {
+            font-size: 28px;
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        #score-text {
+            font-size: 32px;
+            font-weight: bold;
+            color: #27ae60;
+            margin: 20px 0;
+        }
+        #details-text {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 25px;
+        }
+        #retry-btn {
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 12px 30px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 18px;
             cursor: pointer;
-            margin-top: 20px;
-            display: none; /* مخفي حتى يتم اختيار إجابة */
-            width: 100%;
         }
-        #next-btn:hover {
+        #retry-btn:hover {
             background-color: #2980b9;
-        }
-        .score-container {
-            text-align: center;
-            display: none;
-        }
-        .score-container h3 {
-            font-size: 24px;
-            color: #27ae60;
         }
     </style>
 </head>
 <body>
 
-    <div class="quiz-container" id="quiz">
-        <div id="question-container">
-            <h2 id="question">جاري تحميل السؤال...</h2>
-            <div id="options">
-                </div>
-        </div>
-        <button id="next-btn" onclick="nextQuestion()">السؤال التالي</button>
+    <div class="quiz-container">
+        <div id="all-questions-container"></div>
+        
+        <button id="submit-btn" onclick="showScore()">إنهاء الاختبار وعرض النتيجة</button>
         
         <div class="score-container" id="score-container">
-            <h3>انتهى الاختبار!</h3>
-            <p id="score-text"></p>
-            <button id="next-btn" style="display:block;" onclick="location.reload()">إعادة الاختبار</button>
+            <h3>نتيجتك النهائية</h3>
+            <div id="score-text"></div>
+            <div id="details-text"></div>
+            <button id="retry-btn" onclick="location.reload()">إعادة الاختبار</button>
         </div>
     </div>
 
     <script>
-        // مصفوفة الأسئلة - يمكنك إضافة بقية الأسئلة هنا بنفس التنسيق
+        // مصفوفة الأسئلة
         const quizData = [
             {
                 question: "يمكن تقسيم المراحل التي مر بها التنظيم الدولي من حيث التطور التاريخي الى:",
@@ -135,38 +168,43 @@
             }
         ];
 
-        let currentQuestionIndex = 0;
         let score = 0;
+        const container = document.getElementById("all-questions-container");
 
-        const questionEl = document.getElementById("question");
-        const optionsEl = document.getElementById("options");
-        const nextBtn = document.getElementById("next-btn");
-        const quizContainer = document.getElementById("question-container");
-        const scoreContainer = document.getElementById("score-container");
-        const scoreText = document.getElementById("score-text");
+        // دالة لتحميل وعرض جميع الأسئلة دفعة واحدة
+        function loadAllQuestions() {
+            quizData.forEach((currentQuizData, index) => {
+                // إنشاء مربع السؤال
+                const questionDiv = document.createElement("div");
+                questionDiv.className = "question-block";
+                questionDiv.innerHTML = `<h2>${index + 1}. ${currentQuizData.question}</h2>`;
 
-        function loadQuestion() {
-            // تفريغ الخيارات السابقة
-            optionsEl.innerHTML = "";
-            nextBtn.style.display = "none";
+                // حاوية الخيارات لهذا السؤال
+                const optionsDiv = document.createElement("div");
+                
+                // إنشاء أزرار الخيارات
+                currentQuizData.options.forEach(option => {
+                    const button = document.createElement("button");
+                    button.innerText = option;
+                    button.classList.add("option-btn");
+                    button.onclick = () => selectAnswer(button, option, currentQuizData.answer, optionsDiv);
+                    optionsDiv.appendChild(button);
+                });
 
-            const currentQuizData = quizData[currentQuestionIndex];
-            questionEl.innerText = `${currentQuestionIndex + 1}. ${currentQuizData.question}`;
-
-            // إنشاء أزرار الخيارات
-            currentQuizData.options.forEach(option => {
-                const button = document.createElement("button");
-                button.innerText = option;
-                button.classList.add("option-btn");
-                button.onclick = () => selectAnswer(button, option, currentQuizData.answer);
-                optionsEl.appendChild(button);
+                questionDiv.appendChild(optionsDiv);
+                container.appendChild(questionDiv);
             });
         }
 
-        function selectAnswer(selectedButton, selectedOption, correctAnswer) {
-            const allButtons = document.querySelectorAll(".option-btn");
+        // دالة التحقق من الإجابة عند الضغط عليها
+        function selectAnswer(selectedButton, selectedOption, correctAnswer, optionsContainer) {
+            // التأكد من عدم الإجابة على السؤال مسبقاً
+            if (optionsContainer.classList.contains("answered")) return;
+            optionsContainer.classList.add("answered");
+
+            const allButtons = optionsContainer.querySelectorAll(".option-btn");
             
-            // إيقاف تفعيل الأزرار بعد الاختيار
+            // إيقاف تفعيل الأزرار لهذا السؤال فقط
             allButtons.forEach(btn => btn.disabled = true);
 
             // التحقق من الإجابة
@@ -175,36 +213,37 @@
                 score++;
             } else {
                 selectedButton.classList.add("incorrect");
-                // البحث عن الزر الذي يحتوي على الإجابة الصحيحة وتلوينه بالأصفر
+                // البحث عن الإجابة الصحيحة وتلوينها بالأصفر
                 allButtons.forEach(btn => {
                     if (btn.innerText === correctAnswer) {
                         btn.classList.add("correct");
                     }
                 });
             }
-
-            // إظهار زر الانتقال للسؤال التالي
-            nextBtn.style.display = "block";
         }
 
-        function nextQuestion() {
-            currentQuestionIndex++;
-            if (currentQuestionIndex < quizData.length) {
-                loadQuestion();
-            } else {
-                showScore();
-            }
-        }
-
+        // دالة عرض النتيجة النهائية من 100
         function showScore() {
-            quizContainer.style.display = "none";
-            nextBtn.style.display = "none";
+            const submitBtn = document.getElementById("submit-btn");
+            const scoreContainer = document.getElementById("score-container");
+            const scoreText = document.getElementById("score-text");
+            const detailsText = document.getElementById("details-text");
+
+            submitBtn.style.display = "none";
             scoreContainer.style.display = "block";
-            scoreText.innerText = `لقد أجبت بشكل صحيح على ${score} من أصل ${quizData.length} أسئلة.`;
+
+            // حساب النسبة المئوية
+            const percentage = Math.round((score / quizData.length) * 100);
+            
+            scoreText.innerText = `%${percentage}`;
+            detailsText.innerText = `لقد أجبت بشكل صحيح على ${score} من أصل ${quizData.length} أسئلة.`;
+
+            // النزول برؤية الشاشة للأسفل حيث توجد النتيجة
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
 
-        // بدء الاختبار عند تحميل الصفحة
-        loadQuestion();
+        // تشغيل دالة تحميل الأسئلة عند فتح الصفحة
+        loadAllQuestions();
     </script>
 </body>
 </html>
